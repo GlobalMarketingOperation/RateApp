@@ -98,15 +98,11 @@
   </div>
 
 <script>
-  // ---- CONFIGURATION ----
-  // Paste your Power Automate "When an HTTP request is received" trigger URL here
-  // to collect ratings into a SharePoint list (see instructions below the download).
-  // Leave empty to just show a local thank-you message without saving anywhere.
-  const SUBMIT_URL = "https://0119ac28742e478eba7d8fce3acb23.21.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/28/workflows/bc2a85455f0c43b78aa663a56caed0db/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=P9e132n_5HPaNkFx5O9gAd4mEkymWZKuhhMGX8MjxSo";
+  // Power Automate HTTP trigger URL
+  const SUBMIT_URL = "https://0119ac28742e478eba7d8fce3acb23.21.environment.api.powerplatform.com/powerautomate/automations/direct/cu/28/workflows/bc2a85455f0c43b78aa663a56caed0db/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=P9e132n_5HPaNkFx5O9gAd4mEkymWZKuhhMGX8MjxSo";
 
-  // Optional: identify which course/page this widget is on, useful if you
-  // reuse the same widget across multiple SharePoint pages.
-  const COURSE_NAME = document.title || "Unknown course";
+  // Gets the SharePoint page title
+  const PAGE_NAME = document.title || "Unknown Page";
 
   let selectedRating = 0;
   const starEls = document.querySelectorAll(".star");
@@ -114,15 +110,21 @@
   const statusEl = document.getElementById("status");
 
   function paintStars(value) {
-    starEls.forEach(s => {
-      const v = parseInt(s.dataset.value, 10);
-      s.classList.toggle("active", v <= value);
+    starEls.forEach(star => {
+      const v = parseInt(star.dataset.value, 10);
+      star.classList.toggle("active", v <= value);
     });
   }
 
   starEls.forEach(star => {
-    star.addEventListener("mouseenter", () => paintStars(parseInt(star.dataset.value, 10)));
-    star.addEventListener("mouseleave", () => paintStars(selectedRating));
+    star.addEventListener("mouseenter", () => {
+      paintStars(parseInt(star.dataset.value, 10));
+    });
+
+    star.addEventListener("mouseleave", () => {
+      paintStars(selectedRating);
+    });
+
     star.addEventListener("click", () => {
       selectedRating = parseInt(star.dataset.value, 10);
       paintStars(selectedRating);
@@ -130,38 +132,49 @@
   });
 
   submitBtn.addEventListener("click", async () => {
-    if (selectedRating === 0) {
+
+    if (!selectedRating) {
       statusEl.textContent = "Please select a star rating first.";
       statusEl.classList.add("error");
       return;
     }
-    statusEl.classList.remove("error");
+
     submitBtn.disabled = true;
+    statusEl.classList.remove("error");
     statusEl.textContent = "Submitting...";
 
     const payload = {
+      pageName: PAGE_NAME,
       rating: selectedRating,
-      course: COURSE_NAME,
       submittedAt: new Date().toISOString()
     };
 
     try {
-      if (SUBMIT_URL) {
-        await fetch(SUBMIT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+
+      const response = await fetch(SUBMIT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error("Request failed");
       }
+
       statusEl.textContent = "Thanks for your feedback!";
       submitBtn.textContent = "Submitted";
-    } catch (err) {
+
+    } catch (error) {
+
       statusEl.textContent = "Something went wrong. Please try again.";
       statusEl.classList.add("error");
       submitBtn.disabled = false;
+
+      console.error(error);
     }
+
   });
 </script>
 
-</body>
-</html>
